@@ -35,8 +35,110 @@ def apply_feature_patches(repo: Repository):
             sys.exit(1)
 
 
+def apply_source_patches():
+    logger.info("Applying source patches...")
+    src_root = Constants.PROJECT_DIR / "src" / "main" / "java"
+    decompile_root = Constants.DECOMPILE_DIR
+    patches_root = Constants.SRC_PATCHES_DIR
+
+    if not patches_root.exists():
+        logger.info("No source patches directory found.")
+        return
+
+    patches = list(patches_root.rglob("*.patch"))
+    if not patches:
+        logger.info("No source patches found.")
+        return
+
+    logger.info("Found {} source patches.", len(patches))
+
+    for patch_file in patches:
+        rel_path = patch_file.relative_to(patches_root)
+        java_rel_path = rel_path.with_suffix(".java")
+        target_file = src_root / java_rel_path
+        original_file = decompile_root / java_rel_path
+
+        if not original_file.exists():
+            logger.warning("Original file for patch {} not found at {}", rel_path, original_file)
+            continue
+
+        # Copy original to target, stripping CR
+        target_file.parent.mkdir(parents=True, exist_ok=True)
+
+        content = original_file.read_bytes().replace(b'\r', b'')
+        target_file.write_bytes(content)
+
+        # Apply patch
+        try:
+            subprocess.run(
+                ["git", "apply", "-p1", str(patch_file.absolute())],
+                cwd=str(src_root),
+                check=True,
+                capture_output=True
+            )
+            logger.info("Applied patch {}", rel_path)
+        except subprocess.CalledProcessError as e:
+            logger.error("Failed to apply patch {}: {}", rel_path, e.stderr.decode().strip())
+
+
+def make_source_patches():
+    logger.info("Making source patches...")
+    src_root = Constants.PROJECT_DIR / "src" / "main" / "java"
+    decompile_root = Constants.DECOMPILE_DIR
+    patches_root = Constants.SRC_PATCHES_DIR
+
+    patches_root.mkdir(parents=True, exist_ok=True)
+
+    count = 0
+
+    for file_path in src_root.rglob("*.java"):
+        rel_path = file_path.relative_to(src_root)
+        original_file = decompile_root / rel_path
+
+        if not original_file.exists():
+            continue
+
+        # Prepare temp files with stripped CR
+        with tempfile.TemporaryDirectory() as tmpdir:
+            t_orig_dir = Path(tmpdir) / "a"
+            t_mod_dir = Path(tmpdir) / "b"
+
+            t_orig = t_orig_dir / rel_path
+            t_mod = t_mod_dir / rel_path
+
+            t_orig.parent.mkdir(parents=True, exist_ok=True)
+            t_mod.parent.mkdir(parents=True, exist_ok=True)
+
+            t_orig.write_bytes(original_file.read_bytes().replace(b'\r', b''))
+            t_mod.write_bytes(file_path.read_bytes().replace(b'\r', b''))
+
+            cmd = ["git", "diff", "--no-index", "--minimal",
+                   f"a/{rel_path.as_posix()}",
+                   f"b/{rel_path.as_posix()}"]
+
+            result = subprocess.run(cmd, cwd=tmpdir, capture_output=True, text=True)
+
+            patch_content = result.stdout
+            patch_file = patches_root / rel_path.with_suffix(".patch")
+
+            if patch_content:
+                patch_file.parent.mkdir(parents=True, exist_ok=True)
+                if patch_file.exists() and patch_file.read_text() == patch_content:
+                    pass
+                else:
+                    patch_file.write_text(patch_content)
+                    logger.info("Created/Updated patch: {}", patch_file.name)
+                    count += 1
+            else:
+                if patch_file.exists():
+                    patch_file.unlink()
+                    logger.info("Removed patch: {}", patch_file.name)
+
+    logger.info("Processed source patches. Created/Updated: {}", count)
+
+
 if __name__ == "__main__":
-    actions = ("setup", "makeFeaturePatches", "applyPatches")
+    actions = ("setup", "makeFeaturePatches", "applyPatches", "makeSourcePatches", "applySourcePatches")
 
     if len(sys.argv) <= 1 or sys.argv[1] not in actions:
         print("Usage: python run.py [{}]".format("|".join(actions)))
@@ -97,8 +199,8 @@ if __name__ == "__main__":
         repo.commit("Initial decompilation")
         repo.execute("tag baseline")
 
-        logger.info("Applying patches")
-        apply_feature_patches(repo)
+        # logger.info("Applying patches")
+        # apply_feature_patches(repo)
 
 
     elif action == "makeFeaturePatches":
@@ -134,3 +236,13 @@ if __name__ == "__main__":
 
         logger.info("Patches created, files copied: {}", copies)
 
+    elif action == "applyPatches":
+        logger.warning("no-op")
+        # repo = ensure_repo()
+        # apply_feature_patches(repo)
+
+    elif action == "makeSourcePatches":
+        make_source_patches()
+
+    elif action == "applySourcePatches":
+        apply_source_patches()

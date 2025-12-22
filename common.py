@@ -14,6 +14,7 @@ class Constants:
     DOWNLOADS_DIR = WORK_DIR / "download"
     DECOMPILE_DIR = WORK_DIR / "decompile"
     PATCHES_DIR = BASE_DIR / "patches"
+    SRC_PATCHES_DIR = BASE_DIR / "src-patches"
     PROJECT_DIR = BASE_DIR / "hytale-server"
 
 
@@ -24,6 +25,7 @@ class Constants:
         Constants.DECOMPILE_DIR.mkdir(parents=True, exist_ok=True)
         Constants.DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
         Constants.PATCHES_DIR.mkdir(parents=True, exist_ok=True)
+        Constants.SRC_PATCHES_DIR.mkdir(parents=True, exist_ok=True)
         # do not create PROJECT_DIR here
 
 
