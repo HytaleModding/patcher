@@ -43,12 +43,14 @@ def pre_init():
     try:
         fp = tempfile.TemporaryDirectory()
         fpath = Path(fp.name) / "A.java"
-        fpath.write_bytes(b"public class A{ public static void main(String[] a) { System.out.println(System.getProperty(\"java.version\")); }}")
+        fpath.write_bytes(
+            b"public class A{ public static void main(String[] a) { System.out.println(System.getProperty(\"java.version\")); }}")
         result = subprocess.run(["java", str(fpath)], capture_output=True, text=True, check=True)  # java 11+
         java_version = result.stdout.strip()
         fp.cleanup()
     except (FileNotFoundError, subprocess.CalledProcessError):
-        logger.error("Java not found or outdated! Please make sure JDK 25 is installed and available in your system PATH.")
+        logger.error(
+            "Java not found or outdated! Please make sure JDK 25 is installed and available in your system PATH.")
         sys.exit(1)
 
     # check java version
@@ -69,7 +71,6 @@ def pre_init():
     except (FileNotFoundError, subprocess.CalledProcessError):
         logger.error("Please make sure JDK is properly installed and the corresponding bin folder is on PATH.")
         sys.exit(1)
-
 
     Constants.ensure_dirs()
 
