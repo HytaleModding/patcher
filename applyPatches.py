@@ -1,14 +1,12 @@
 import subprocess
 import os
 import glob
-import logging
-from logger import setup_logging
+
+from loguru import logger as log
 
 DECOMPILE_DIR = "work/decompile/"
 PATCHES_DIR = "patches/"
 
-setup_logging()
-log = logging.getLogger(__name__)
 
 def apply_patch(patch_file: str) -> bool:
     """Apply a single patch file using git apply"""

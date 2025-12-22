@@ -1,13 +1,11 @@
 import subprocess
 import os
-
 import re
-import logging
-from logger import setup_logging
+
+from loguru import logger as log
 
 DECOMPILE_DIR = "work/decompile/"
-setup_logging()
-log = logging.getLogger(__name__)
+
 
 def diff() -> str:
     result = subprocess.run(
