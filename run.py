@@ -1,14 +1,42 @@
+import os
+
 from common import *
 import sys
 import shutil
 
-from python_git_wrapper import Repository
+from python_git_wrapper import Repository, GitError
 
 USE_MAVEN = True
 
 
+def ensure_repo() -> Repository:
+    if not Constants.PROJECT_DIR.is_dir() or not (Constants.PROJECT_DIR / ".git").is_dir():
+        logger.error("Project directory does not exist or is not a git repository. Please run setup first.")
+        sys.exit(1)
+
+    repo = Repository(str(Constants.DECOMPILE_DIR))
+    # repo.current_branch  # will raise if empty
+    return repo
+
+def apply_feature_patches(repo: Repository):
+    try:
+        repo.execute("am --abort")
+    except GitError as e:
+        if "Resolve operation not in progress, we are not resuming." not in e.args[0]:
+            logger.error("Failed to abort previous patch application: {}", e)
+            sys.exit(1)
+
+    for patch_file in sorted(Constants.PATCHES_DIR.glob("*.patch")):
+        try:
+            repo.execute("am --3way", str(patch_file))
+        except GitError as e:
+            logger.warning("Failed to apply patch {}: {}", patch_file.name, e)
+            logger.warning("Please resolve the conflict manually and then run makeFeaturePatches")
+            sys.exit(1)
+
+
 if __name__ == "__main__":
-    actions = ("setup", "makePatches", "applyPatches")
+    actions = ("setup", "makeFeaturePatches", "applyPatches")
 
     if len(sys.argv) <= 1 or sys.argv[1] not in actions:
         print("Usage: python run.py [{}]".format("|".join(actions)))
@@ -63,10 +91,46 @@ if __name__ == "__main__":
         repo_gitignore.write_text("\n".join(("target/", ".idea/", "out/", "*.iml", "*.class")))
 
         repo = Repository(str(Constants.PROJECT_DIR))
+        repo.execute("init")
+        repo.add_files(['.gitignore'])
         repo.add_files(all_files=True)
         repo.commit("Initial decompilation")
+        repo.execute("tag baseline")
+
+        logger.info("Applying patches")
+        apply_feature_patches(repo)
 
 
+    elif action == "makeFeaturePatches":
+        repo = ensure_repo()
+        tmp = tempfile.TemporaryDirectory()
 
-        print(repo)
+        # git format-patch --no-stat --minimal -N -o ../patches [range]
+        # range can be abc1234..HEAD or similar
+
+        # for some reason this does not work, like python subprocess changes how baseline..HEAD is passed as argument?
+        # out = repo.execute(
+        #     "format-patch --no-stat --minimal -N",
+        #     "-o", tmp.name,
+        #     "baseline..HEAD"
+        # )
+        out = subprocess.run(
+            f'git format-patch --no-stat --minimal -N -o "{tmp.name}" baseline..HEAD',
+            cwd=str(Constants.PROJECT_DIR), shell=True, capture_output=True, text=True, check=True
+        )
+
+        logger.info("git format-patch output:\n{}", out.stdout.strip())
+        num_patches = len(list(Constants.PATCHES_DIR.glob("*.patch")))
+        copies = 0
+        for new_patch_file in os.listdir(tmp.name):
+            index = int(new_patch_file.split("-")[0])  # 0001-...
+            if index <= num_patches:
+                continue  # skip existing patches
+            shutil.move(
+                os.path.join(tmp.name, new_patch_file),
+                Constants.PATCHES_DIR / new_patch_file
+            )
+            copies += 1
+
+        logger.info("Patches created, files copied: {}", copies)
 
