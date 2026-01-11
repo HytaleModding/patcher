@@ -20,15 +20,19 @@ one of these:
 * Activate the virtual environment:
   - Windows: `".venv\Scripts\activate"`  (including the quotes)
   - Linux/Mac: `source .venv/bin/activate`
+  From now on, you are running python commands from inside the venv, hence you must use `python` instead of `py` or `python3` to invoke python.
+ 
+* Inside the venv, you have to install the dependencies
+  - `pip install -r requirements.txt`
 
 * Install these dependencies and ensure they are on PATH:
   - `git`
   - `java` you need JDK 25 or newer
   - `jar` (comes with JDK inside the bin folder)
   - `mvn`
-## Usage
+ 
 
-All commands should be run from inside the venv, hence `python` is the right command to invoke python.
+## Usage
 
 First run this:
 ```shell
