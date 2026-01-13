@@ -1,11 +1,17 @@
+import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
+import os
 import wget
 from loguru import logger
 
+from utils import ensure_java, ensure_git, ensure_jar
+
+
+SERVER_JAR_ENV = "HYTALESERVER_JAR_PATH"
 
 class Constants:
     BASE_DIR = Path(__file__).resolve().parent
@@ -36,56 +42,28 @@ def pre_init():
         sys.exit(1)
 
     # ensure git
-    try:
-        _ = subprocess.run("git --version", capture_output=True, text=True, check=True)
-        logger.info("Git check success: {}", _.stdout.strip())
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        logger.error("Git not found! Please make sure Git is installed and available in your system PATH.")
-        sys.exit(1)
+    ensure_git()
 
-    # get java version
-    java_version = None
-    try:
-        fp = tempfile.TemporaryDirectory()
-        fpath = Path(fp.name) / "A.java"
-        fpath.write_bytes(
-            b"public class A{ public static void main(String[] a) { System.out.println(System.getProperty(\"java.version\")); }}")
-        result = subprocess.run(["java", str(fpath)], capture_output=True, text=True, check=True)  # java 11+
-        java_version = result.stdout.strip()
-        fp.cleanup()
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        logger.error(
-            "Java not found or outdated! Please make sure JDK 25 is installed and available in your system PATH.")
-        sys.exit(1)
-
-    # check java version
-    major = 0
-    if java_version is not None:
-        major = java_version.split(".")[0]
-        major = int(major) if major.isdigit() else 0
-    if major < 25:
-        logger.error("JDK 25 or newer is required!", java_version)
-        sys.exit(1)
-
-    logger.info("Java check success: {}", java_version)
+    # get and check java version
+    java_version = ensure_java()
 
     # ensure jar utility
-    try:
-        _ = subprocess.run("jar --version", capture_output=True, text=True, check=True)
-        logger.info("Jar utility check success: {}", _.stdout.strip())
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        logger.error("Please make sure JDK is properly installed and the corresponding bin folder is on PATH.")
-        sys.exit(1)
+    ensure_jar()
 
     Constants.ensure_dirs()
 
 
 def download_server_jar(out_path: Path):
     # TODO: replace with actual Hytale server jar after release
-
-    if not out_path.exists():
-        logger.info("Downloading jar to {}...", out_path)
-        wget.download("https://cdn.ribica.dev/minigui.jar", out=str(out_path))
+    if os.path.isfile('HytaleServer.jar'):
+        logger.info("Using local HytaleServer.jar, copying to {}", out_path)
+        shutil.copyfile('HytaleServer.jar', out_path)
+    elif (p := os.getenv(SERVER_JAR_ENV)) and os.path.isfile(p):
+        logger.info("Using {}, copying to {}", SERVER_JAR_ENV, out_path)
+        shutil.copyfile(p, out_path)
+    else:
+        logger.error("HytaleServer.jar not found, please download it and put it in this directory: {}", os.getcwd())
+        sys.exit(1)
 
 
 def decompile(jar_in: Path, out_dir: Path):
