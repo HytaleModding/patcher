@@ -1,3 +1,4 @@
 loguru
 wget
 python-git-wrapper
+tqdm

@@ -3,6 +3,7 @@ import os
 from common import *
 import sys
 import shutil
+import xml.etree.ElementTree as ET
 
 from python_git_wrapper import Repository, GitError
 
@@ -65,7 +66,7 @@ def apply_source_patches():
         # Copy original to target, stripping CR
         target_file.parent.mkdir(parents=True, exist_ok=True)
 
-        content = original_file.read_bytes()
+        content = original_file.read_bytes().replace(b'\r', b'')
         target_file.write_bytes(content)
 
         # Apply patch
@@ -150,6 +151,9 @@ if __name__ == "__main__":
         print("Usage: python run.py [{}]".format("|".join(actions)))
         sys.exit(1)
 
+    logger.info('\n\n[ [ HytaleModding patcher by Neil, ribica & other contributors ] ]\n')
+
+
     action = sys.argv[1]
     pre_init()
 
@@ -158,15 +162,20 @@ if __name__ == "__main__":
             logger.warning("Project directory already exists. Please delete the folder and run setup again.")
             sys.exit(1)
 
-        # remove previous work dir
-        shutil.rmtree(Constants.WORK_DIR, ignore_errors=True)
-        Constants.ensure_dirs()
+        decompile_dir = Constants.DECOMPILE_DIR
+        skip_decompile = decompile_dir.exists() and any(decompile_dir.iterdir())
 
-        # download and decompile
-        jar_path = Constants.DOWNLOADS_DIR / "hytale-server.jar"
-        download_server_jar(jar_path)
+        # shutil.rmtree(Constants.WORK_DIR, ignore_errors=True)
+        if not skip_decompile:
+            Constants.ensure_dirs()
 
-        decompile(jar_path, Constants.DECOMPILE_DIR)
+            # download and decompile
+            jar_path = Constants.DOWNLOADS_DIR / "hytale-server.jar"
+            download_server_jar(jar_path)
+
+            decompile(jar_path, Constants.DECOMPILE_DIR, use_vineflower=True)
+        else:
+            logger.warning("Skipped decompilation because the work directory already exists!")
 
         # initialize project directory
         if not USE_MAVEN:
@@ -184,17 +193,62 @@ if __name__ == "__main__":
             subprocess.run([
                 "mvn", "archetype:generate",
                 # "-DgroupId=com.hypixel.hytale", "-DartifactId=hytale-server",
-                "-DgroupId=dev.ribica.hytalemodding", "-DartifactId=" + Constants.PROJECT_DIR.name,
+                "-DgroupId=com.hypixel.hytale", "-DartifactId=" + Constants.PROJECT_DIR.name,
                 "-DarchetypeArtifactId=maven-archetype-quickstart", "-DinteractiveMode=false"
             ], check=True, shell=True)
 
             logger.info("Maven project initialized!")
 
+            # Merge pom.xml with template
+            pom_file = Constants.PROJECT_DIR / "pom.xml"
+            template_file = Constants.BASE_DIR / "pom.xml.template"
+
+            if template_file.exists():
+                ET.register_namespace('', "http://maven.apache.org/POM/4.0.0")
+                ns = {'mvn': 'http://maven.apache.org/POM/4.0.0'}
+
+                target_tree = ET.parse(pom_file)
+                target_root = target_tree.getroot()
+
+                template_tree = ET.parse(template_file)
+                template_root = template_tree.getroot()
+
+                # Update dependencies
+                tmpl_deps = template_root.find('mvn:dependencies', ns)
+                if tmpl_deps is not None:
+                    target_deps = target_root.find('mvn:dependencies', ns)
+                    if target_deps is not None:
+                        target_root.remove(target_deps)
+                    target_root.append(tmpl_deps)
+
+                # Update build
+                tmpl_build = template_root.find('mvn:build', ns)
+                if tmpl_build is not None:
+                    target_build = target_root.find('mvn:build', ns)
+                    if target_build is not None:
+                        target_root.remove(target_build)
+                    target_root.append(tmpl_build)
+
+                target_tree.write(pom_file, encoding='UTF-8', xml_declaration=True)
+                logger.info("Updated pom.xml with dependencies and build configuration from template")
+            else:
+                logger.warning("pom.xml.template not found, skipping pom update")
+
             src = Constants.PROJECT_DIR / "src" / "main" / "java"
 
         shutil.rmtree(src)
-        shutil.copytree(Constants.DECOMPILE_DIR, src)
+        src.mkdir(parents=True, exist_ok=True)
 
+        # Copy only com.hypixel sources
+        src_hypixel = Constants.DECOMPILE_DIR / "com" / "hypixel"
+        dst_hypixel = src / "com" / "hypixel"
+
+        if not src_hypixel.exists():
+            logger.error("com.hypixel sources not found in decompiled output!")
+            sys.exit(1)
+
+        logger.info("Copying com.hypixel sources...")
+        shutil.copytree(src_hypixel, dst_hypixel)
         repo_gitignore = Constants.PROJECT_DIR / ".gitignore"
         repo_gitignore.write_text("\n".join(("target/", ".idea/", "out/", "*.iml", "*.class")))
 
@@ -208,6 +262,12 @@ if __name__ == "__main__":
         # logger.info("Applying patches")
         # apply_feature_patches(repo)
 
+        logger.info('')
+        logger.info('Setup finished!')
+        logger.info('You can now open the "{}" folder in IntelliJ IDEA and follow further instructions in the README', Constants.PROJECT_DIR)
+        logger.info('Please give us a star on GitHub if you find this project useful.')
+        logger.info('Happy Modding!')
+        logger.info('')
 
     elif action == "makeFeaturePatches":
         logger.warning("This is deprecated, please consider using makeSourcePatches instead.")

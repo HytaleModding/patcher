@@ -2,11 +2,13 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 
 import os
 import wget
 from loguru import logger
+from tqdm import tqdm
 
 from utils import ensure_java, ensure_git, ensure_jar
 
@@ -65,26 +67,74 @@ def download_server_jar(out_path: Path):
         sys.exit(1)
 
 
-def decompile(jar_in: Path, out_dir: Path):
+def run_fernflower(classes_dir: Path, out_dir: Path):
+    # Vineflower equivalent options:
+    #
+    source = classes_dir / "com" / "hypixel"
+    if source.exists():
+        out_dir = out_dir / "com" / "hypixel"
+        out_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        source = classes_dir
+
+    subprocess.run([
+        "java", "-jar", str(Constants.TOOLS_DIR / "fernflower.jar"),
+        *"-dgs=1 -hdc=0 -rbr=0 -asc=1 -udv=1 -log=WARN".split(),
+        "-e=.",
+        str(source),
+        str(out_dir)
+    ], cwd=str(classes_dir), check=True)
+
+
+def run_vineflower(classes_dir: Path, out_dir: Path):
+    source = classes_dir / "com" / "hypixel"
+    if source.exists():
+        out_dir = out_dir / "com" / "hypixel"
+        out_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        source = classes_dir
+
+    subprocess.run([
+        "java", "-jar", str(Constants.TOOLS_DIR / "vineflower.jar"),
+        *"--decompile-generics=true --hide-default-constructor=false --remove-bridge=false --ascii-strings=true --use-lvt-names=true --log-level=warn".split(),
+        "-e=.",
+        str(source),
+        str(out_dir)
+    ], cwd=str(classes_dir), check=True)
+
+
+def decompile(jar_in: Path, out_dir: Path, use_vineflower: bool = False):
     if not jar_in.is_file():
         raise ValueError("Input jar does not exist")
     if not out_dir.is_dir():
         raise ValueError("Output directory does not exist")
 
-    logger.info("Decompiling {} to {}...", jar_in, out_dir)
-    # Vineflower equivalent options:
-    # --decompile-generics=true --hide-default-constructor=false --remove-bridge=false --ascii-strings=true --use-lvt-names=true
-    subprocess.run([
-        "java", "-jar", str(Constants.TOOLS_DIR / "fernflower.jar"),
-        *"-dgs=1 -hdc=0 -rbr=0 -asc=1 -udv=1 -log=WARN".split(),
-        str(jar_in),
-        str(out_dir)
-    ], check=True)
+    logger.info("Extracting {}...", jar_in)
+    classes_dir = out_dir / "classes_temp"
+    if classes_dir.exists():
+        shutil.rmtree(classes_dir)
+    classes_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info("Extracting decompiled sources...")
-    out_jar = out_dir / jar_in.name  # Fernflower outputs a jar with source files inside
-    subprocess.run(["jar", "xf", str(out_jar)], cwd=str(out_dir), check=True)
-    out_jar.unlink()
+    with zipfile.ZipFile(jar_in, 'r') as zf:
+        for member in tqdm(zf.infolist()):
+            if member.filename.startswith('darwin') \
+                or member.filename.startswith('linux') \
+                or member.filename.startswith('freebsd') \
+                or member.filename.startswith('win') \
+                :  # zstd native libs, skip
+                continue
+            if member.filename == "META-INF/LICENSE":
+                member.filename = "META-INF/LICENSE.renamed"
+            zf.extract(member, classes_dir)
+
+    logger.info("Decompiling extracted classes in {} to {}...", classes_dir, out_dir)
+
+    if use_vineflower:
+        run_vineflower(classes_dir, out_dir)
+    else:
+        run_fernflower(classes_dir, out_dir)
+
+    shutil.rmtree(classes_dir)
 
 
 if __name__ == "__main__":
