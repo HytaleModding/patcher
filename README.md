@@ -1,69 +1,14 @@
-# ~~Patcher~~
+# HytaleModding Patcher
 
-This ~~patcher~~ allows you to more easily prepare an environment for exploring the Hytale Server without publishing the decompiled code.
+This tool allows you to more easily prepare an environment for exploring the Hytale Server without publishing the decompiled code.
 
 # Why?
 
 When you add a compiled jar as a library, IntelliJ only decompiles class by class and doesn't let you search it. For example, you cannot right click some class and then Find Usages. This script will give you a ready to use Hytale server code as a project where you can explore anything you want.
 
+# Instructions
 
-If anything goes wrong, please ping @7o1 in [this post](https://discord.com/channels/1440173445039132724/1460707397189238785) in the Hytale Modding discord server
+**USAGE INSTRUCTIONS MOVED HERE:** https://hytalemodding.dev/en/docs/guides/plugin/browsing-serverjar
 
+If anything goes wrong, please ping @7o1 in [this post](https://discord.com/channels/1440173445039132724/1460707397189238785) ("How to browse the server source code") in the Hytale Modding discord server
 
-## Setup
-
-* Clone this repository and `cd` into it.
-
-* Create a Python virtual environment in the `.venv` folder. The command for this varies by platform but it is probably 
-one of these: 
-  - `python -m venv .venv`
-  - `python3 -m venv .venv` (Linux)
-  - `py -3.13 -m venv .venv` (Windows)  
-
-  In the last one, specifying the version is recommended if you have multiple Pythons installed.
-
-* Activate the virtual environment:
-  - Windows: `".venv\Scripts\activate"`  (including the quotes)
-  - Linux/Mac: `source .venv/bin/activate`
-  - From now on, you are running python commands from inside the venv, hence you must use `python` instead of `py` or `python3` to invoke python.
- 
-* Inside the venv, you have to install the dependencies
-  - `pip install -r requirements.txt`
-
-* Install these dependencies and ensure they are on PATH:
-  - `git`
-  - `java` you need JDK 25 or newer
-  - `jar` (comes with JDK inside the bin folder)
-  - `mvn`
-
-### **YOU MUST HAVE THEM INSTALLED! TRY `git --version`, `mvn --version`, etc. IN THE CMD BEFORE RUNNING PYTHON CODE!**
- 
-
-## Usage
-
-Put your HytaleServer.jar in the same root directory of this repo or specify an environment variable `HYTALESERVER_JAR_PATH` with the path to your HytaleServer.jar
-
-Then run this:
-```shell
-python run.py setup
-```
-It will
-- copy the HytaleServer.jar into `work/download`
-  * (on Windows) fix `META-INF/license` name collision
-- decompile it using Fernflower and save the output to `work/decompile`
-- set up a Maven project in `hytale-server` with the decompiled code
-
-You can then open the `hytale-server` folder in your favorite IDE and begin exploring the code. For *IntelliJ IDEA*,
-you must first set up the SDK. After opening the project (you can open the `pom.xml` file, IDEA will prompt you to open
-the entire project) press Ctrl+Alt+Shift+S and under _Project_ configure SDK and Language level to *25*.
-
-If IDEA does not offer an option to run the main file, right-click the `src` folder -> Mark Directory As -> Sources Root
-then reload the maven project:  
-![_readme_images/img.png](_readme_images/img.png)  
-It is located in the "m" icon on the right side:  
-![_readme_images/m.png](_readme_images/m.png)  
-If you don't see it, enable it under View -> Tool Windows -> Maven.  
-![_readme_images/tool_windows.png](_readme_images/tool_windows.png)  
-
-
-This decompiled code is likely broken. But it is somewhat usable for exploration. Try Ctrl+Shift+F and search PacketAdapters
