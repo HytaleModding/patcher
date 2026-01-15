@@ -63,7 +63,7 @@ def download_server_jar(out_path: Path):
     elif (p := os.getenv(SERVER_JAR_ENV)) and os.path.isfile(p):
         logger.info("Using {}, copying to {}", SERVER_JAR_ENV, out_path)
         shutil.copyfile(p, out_path)
-    elif (p := os.getenv(SERVER_JAR_ENV) + "\\HytaleServer.jar") and os.path.isfile(p):
+    elif (p := os.getenv(SERVER_JAR_ENV)) and os.path.isdir(p) and os.path.isfile(p := os.path.join(p, "HytaleServer.jar")):
         logger.info("Using {}, copying to {} using only directory", SERVER_JAR_ENV, out_path)
         shutil.copyfile(p, out_path)
     else:
