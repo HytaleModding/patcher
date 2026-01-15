@@ -64,8 +64,8 @@ def download_server_jar(out_path: Path):
         logger.info("Using {}, copying to {}", SERVER_JAR_ENV, out_path)
         shutil.copyfile(p, out_path)
     elif (p := os.getenv(SERVER_JAR_ENV) + "\\HytaleServer.jar") and os.path.isfile(p):
-            logger.info("Using {}, copying to {} using only directory", SERVER_JAR_ENV, out_path)
-            shutil.copyfile(p, out_path)
+        logger.info("Using {}, copying to {} using only directory", SERVER_JAR_ENV, out_path)
+        shutil.copyfile(p, out_path)
     else:
         logger.error("HytaleServer.jar not found, please download it and put it in this directory: {}", os.getcwd())
         sys.exit(1)
