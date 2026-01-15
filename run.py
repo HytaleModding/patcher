@@ -6,6 +6,7 @@ import shutil
 import xml.etree.ElementTree as ET
 
 from python_git_wrapper import Repository, GitError
+from utils import ensure_maven
 
 USE_MAVEN = True
 
@@ -186,6 +187,7 @@ if __name__ == "__main__":
             # src = Constants.PROJECT_DIR / "src"
             # src.mkdir(parents=True, exist_ok=True)
         else:
+            ensure_maven()
             # Maven initialization:
             # mvn archetype:generate -DgroupId=com.hypixel.hytale -DartifactId=hytale-server -DarchetypeArtifactId=maven‑archetype‑quickstart -DinteractiveMode=false
             logger.info("\n\nInitializing Maven project in:\n{}\n\n", Constants.PROJECT_DIR)

@@ -48,3 +48,11 @@ def ensure_jar():
     except (FileNotFoundError, subprocess.CalledProcessError):
         logger.error("Please make sure JDK is properly installed and the corresponding bin folder is on PATH.")
         sys.exit(1)
+
+def ensure_maven():
+    try:
+        _ = subprocess.run(["mvn", "--version"], capture_output=True, text=True, check=True)
+        logger.info("Maven check success: {}", _.stdout.strip())
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        logger.error("Please make sure Maven is properly installed and the corresponding bin folder is on PATH.")
+        sys.exit(1)
