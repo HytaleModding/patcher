@@ -196,7 +196,7 @@ if __name__ == "__main__":
                 "-DgroupId=com.hypixel.hytale", "-DartifactId=" + Constants.PROJECT_DIR.name,
                 "-DarchetypeArtifactId=maven-archetype-quickstart",
                 "-DinteractiveMode=false"
-            ], check=True)
+            ], check=True, shell=Constants().IS_WINDOWS)
 
             logger.info("Maven project initialized!")
 

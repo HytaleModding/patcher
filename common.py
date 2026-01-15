@@ -24,6 +24,9 @@ class Constants:
     SRC_PATCHES_DIR = BASE_DIR / "src-patches"
     PROJECT_DIR = BASE_DIR / "hytale-server"
 
+    # Set based upon the SHELL environment variable. In Unix, this will be set to the default shell (Typically `/bin/bash`), however in windows it remains unset.
+    # We use this to determine how to start sub-processes as it breaks depending on OS
+    IS_WINDOWS = os.environ.get("SHELL") is None
 
     @staticmethod
     def ensure_dirs():
