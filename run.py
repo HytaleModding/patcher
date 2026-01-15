@@ -287,7 +287,16 @@ if __name__ == "__main__":
         #     "baseline..HEAD"
         # )
         out = subprocess.run(
-            f'git format-patch --no-stat --minimal -N -o "{tmp.name}" baseline..HEAD',
+            [
+                'git',
+                'format-patch',
+                '--no-stat',
+                '--minimal',
+                '-N',
+                '-o',
+                f'"tmp.name"',
+                'baseline..HEAD'
+            ],
             cwd=str(Constants.PROJECT_DIR), shell=True, capture_output=True, text=True, check=True
         )
 
