@@ -56,7 +56,8 @@ def pre_init():
 
 
 def download_server_jar(out_path: Path):
-    logger.info("Server Jar Environment Path: " + os.getenv(SERVER_JAR_ENV) + "\\HytaleServer.jar")
+    logger.info("Getting server jar...")
+    
     if os.path.isfile('HytaleServer.jar'):
         logger.info("Using local HytaleServer.jar, copying to {}", out_path)
         shutil.copyfile('HytaleServer.jar', out_path)
