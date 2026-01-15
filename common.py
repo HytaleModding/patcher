@@ -56,16 +56,26 @@ def pre_init():
 
 
 def download_server_jar(out_path: Path):
-    logger.info("Server Jar Environment Path: " + os.getenv(SERVER_JAR_ENV) + "\\HytaleServer.jar")
     if os.path.isfile('HytaleServer.jar'):
         logger.info("Using local HytaleServer.jar, copying to {}", out_path)
         shutil.copyfile('HytaleServer.jar', out_path)
-    elif (p := os.getenv(SERVER_JAR_ENV)) and os.path.isfile(p):
+        return
+
+    server_jar_env = os.getenv(SERVER_JAR_ENV)
+    if not server_jar_env:
+        logger.error("Environment variable {} not set, please set it to the path of your HytaleServer.jar", SERVER_JAR_ENV)
+        sys.exit(1)
+
+    hytale_server_jar_path = os.path.join(server_jar_env, "HytaleServer.jar")
+
+    logger.info("Server Jar Environment Path: " + hytale_server_jar_path)
+
+    if os.path.isfile(server_jar_env):
         logger.info("Using {}, copying to {}", SERVER_JAR_ENV, out_path)
-        shutil.copyfile(p, out_path)
-    elif (p := os.getenv(SERVER_JAR_ENV) + "\\HytaleServer.jar") and os.path.isfile(p):
+        shutil.copyfile(server_jar_env, out_path)
+    elif os.path.isfile(hytale_server_jar_path):
         logger.info("Using {}, copying to {} using only directory", SERVER_JAR_ENV, out_path)
-        shutil.copyfile(p, out_path)
+        shutil.copyfile(hytale_server_jar_path, out_path)
     else:
         logger.error("HytaleServer.jar not found, please download it and put it in this directory: {}", os.getcwd())
         sys.exit(1)
