@@ -99,13 +99,14 @@ def run_vineflower(classes_dir: Path, out_dir: Path):
     else:
         source = classes_dir
 
+
     subprocess.run([
         "java", "-jar", str(Constants.TOOLS_DIR / "vineflower.jar"),
         *"--decompile-generics=true --hide-default-constructor=false --remove-bridge=false --ascii-strings=true --use-lvt-names=true --log-level=warn".split(),
         "-e=.",
         str(source),
         str(out_dir)
-    ], cwd=str(classes_dir), check=True)
+    ], cwd=str(classes_dir), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def decompile(jar_in: Path, out_dir: Path, use_vineflower: bool = False):
