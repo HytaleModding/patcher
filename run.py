@@ -190,12 +190,17 @@ if __name__ == "__main__":
             # mvn archetype:generate -DgroupId=com.hypixel.hytale -DartifactId=hytale-server -DarchetypeArtifactId=maven‑archetype‑quickstart -DinteractiveMode=false
             logger.info("\n\nInitializing Maven project in:\n{}\n\n", Constants.PROJECT_DIR)
 
+            # Use shell if on windows else do not see:
+            # https://github.com/HytaleModding/patcher/issues/5
+            # https://github.com/HytaleModding/patcher/issues/9
+            use_shell = os.name == 'nt' 
+
             subprocess.run([
                 "mvn", "archetype:generate",
                 # "-DgroupId=com.hypixel.hytale", "-DartifactId=hytale-server",
                 "-DgroupId=com.hypixel.hytale", "-DartifactId=" + Constants.PROJECT_DIR.name,
                 "-DarchetypeArtifactId=maven-archetype-quickstart", "-DinteractiveMode=false"
-            ], check=True, shell=True)
+            ], check=True, shell=use_shell)
 
             logger.info("Maven project initialized!")
 
