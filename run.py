@@ -193,7 +193,10 @@ if __name__ == "__main__":
             # Use shell if on windows else do not see:
             # https://github.com/HytaleModding/patcher/issues/5
             # https://github.com/HytaleModding/patcher/issues/9
-            use_shell = os.name == 'nt' 
+            use_shell = os.name == 'nt'
+
+            logger.warning("Using shell={} for mvn command because of your OS.", use_shell)
+            logger.warning("IF MAVEN COMMAND FAILS, PLEASE TRY THE OTHER OPTION BY EDITING run.py manually")
 
             subprocess.run([
                 "mvn", "archetype:generate",
