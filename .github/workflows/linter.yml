@@ -1,0 +1,19 @@
+name: Lint Codebase with Ruff
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  linter-for-suffering:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Checkout GitHub Action"
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+
+      - name: Lint with Ruff
+        uses: astral-sh/ruff-action@57714a7c8a2e59f32539362ba31877a1957dded1
+        with:
+          args: "check --config ruff.toml"
