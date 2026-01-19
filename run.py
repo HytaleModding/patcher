@@ -1,23 +1,32 @@
 import os
 
-from common import *
+from common import Constants, logger, pre_init, download_server_jar, decompile
 import sys
 import shutil
 import xml.etree.ElementTree as ET
-
+import subprocess
+import tempfile
+from pathlib import Path
 from python_git_wrapper import Repository, GitError
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 USE_MAVEN = True
 
 
 def ensure_repo() -> Repository:
     if not Constants.PROJECT_DIR.is_dir() or not (Constants.PROJECT_DIR / ".git").is_dir():
-        logger.error("Project directory does not exist or is not a git repository. Please run setup first.")
+        logger.error(
+            "Project directory does not exist or is not a git repository. Please run setup first."
+        )
         sys.exit(1)
 
     repo = Repository(str(Constants.DECOMPILE_DIR))
     # repo.current_branch  # will raise if empty
     return repo
+
 
 def apply_feature_patches(repo: Repository):
     try:
@@ -66,7 +75,7 @@ def apply_source_patches():
         # Copy original to target, stripping CR
         target_file.parent.mkdir(parents=True, exist_ok=True)
 
-        content = original_file.read_bytes().replace(b'\r', b'')
+        content = original_file.read_bytes().replace(b"\r", b"")
         target_file.write_bytes(content)
 
         # Apply patch
@@ -74,14 +83,20 @@ def apply_source_patches():
             # Run from project root with --directory to handle paths correctly
             relative_src_path = src_root.relative_to(Constants.PROJECT_DIR)
             # Use forward slashes for git directory argument
-            directory_arg = str(relative_src_path).replace(os.sep, '/')
+            directory_arg = str(relative_src_path).replace(os.sep, "/")
 
             out = subprocess.run(
-                ["git", "apply", f"--directory={directory_arg}", "-p1", str(patch_file.absolute())],
+                [
+                    "git",
+                    "apply",
+                    f"--directory={directory_arg}",
+                    "-p1",
+                    str(patch_file.absolute()),
+                ],
                 cwd=str(Constants.PROJECT_DIR),
                 check=True,
                 capture_output=True,
-                text=True
+                text=True,
             )
             logger.info("Applied patch {}, out={}", rel_path, out.stdout.strip())
         except subprocess.CalledProcessError as e:
@@ -160,14 +175,20 @@ def make_source_patches():
             t_orig.parent.mkdir(parents=True, exist_ok=True)
             t_mod.parent.mkdir(parents=True, exist_ok=True)
 
-            t_orig.write_bytes(original_file.read_bytes().replace(b'\r', b''))
-            t_mod.write_bytes(file_path.read_bytes().replace(b'\r', b''))
+            t_orig.write_bytes(original_file.read_bytes().replace(b"\r", b""))
+            t_mod.write_bytes(file_path.read_bytes().replace(b"\r", b""))
 
-            cmd = ["git", "diff", "--no-index", "--minimal", "--no-prefix",
-                   f"a/{rel_path.as_posix()}",
-                   f"b/{rel_path.as_posix()}"]
+            cmd = [
+                "git",
+                "diff",
+                "--no-index",
+                "--minimal",
+                "--no-prefix",
+                f"a/{rel_path.as_posix()}",
+                f"b/{rel_path.as_posix()}",
+            ]
 
-            result = subprocess.run(cmd, cwd=tmpdir, capture_output=True, text=True)
+            result = subprocess.run(cmd, cwd=tmpdir, capture_output=True, text=True, check=True)
 
             patch_content = result.stdout
             patch_file = patches_root / rel_path.with_suffix(".patch")
@@ -180,10 +201,9 @@ def make_source_patches():
                     patch_file.write_text(patch_content)
                     logger.info("Created/Updated patch: {}", patch_file.name)
                     count += 1
-            else:
-                if patch_file.exists():
-                    patch_file.unlink()
-                    logger.info("Removed patch: {}", patch_file.name)
+            elif patch_file.exists():
+                patch_file.unlink()
+                logger.info("Removed patch: {}", patch_file.name)
 
     logger.info("Processed source patches. Created/Updated: {}", count)
 
@@ -192,18 +212,19 @@ if __name__ == "__main__":
     actions = ("setup", "makeFeaturePatches", "makeSourcePatches", "applySourcePatches")
 
     if len(sys.argv) <= 1 or sys.argv[1] not in actions:
-        print("Usage: python run.py [{}]".format("|".join(actions)))
+        logger.info("Usage: python run.py [{}]".format("|".join(actions)))
         sys.exit(1)
 
-    logger.info('\n\n[ [ HytaleModding patcher by Neil, ribica & other contributors ] ]\n')
-
+    logger.info("\n\n[ [ HytaleModding patcher by Neil, ribica & other contributors ] ]\n")
 
     action = sys.argv[1]
     pre_init()
 
     if action == "setup":
         if Constants.PROJECT_DIR.is_dir():
-            logger.warning("Project directory already exists. Please delete the folder and run setup again.")
+            logger.warning(
+                "Project directory already exists. Please delete the folder and run setup again."
+            )
             sys.exit(1)
 
         decompile_dir = Constants.DECOMPILE_DIR
@@ -231,15 +252,32 @@ if __name__ == "__main__":
             # src.mkdir(parents=True, exist_ok=True)
         else:
             # Maven initialization:
-            # mvn archetype:generate -DgroupId=com.hypixel.hytale -DartifactId=hytale-server -DarchetypeArtifactId=maven‑archetype‑quickstart -DinteractiveMode=false
+            # mvn archetype:generate -DgroupId=com.hypixel.hytale -DartifactId=hytale-server -DarchetypeArtifactId=maven‑archetype‑quickstart -DinteractiveMode=false  # noqa: E501
             logger.info("\n\nInitializing Maven project in:\n{}\n\n", Constants.PROJECT_DIR)
 
-            subprocess.run([
-                "mvn", "archetype:generate",
-                # "-DgroupId=com.hypixel.hytale", "-DartifactId=hytale-server",
-                "-DgroupId=com.hypixel.hytale", "-DartifactId=" + Constants.PROJECT_DIR.name,
-                "-DarchetypeArtifactId=maven-archetype-quickstart", "-DinteractiveMode=false"
-            ], check=True, shell=True)
+            # Use shell if on windows else do not see:
+            # https://github.com/HytaleModding/patcher/issues/5
+            # https://github.com/HytaleModding/patcher/issues/9
+            use_shell = os.name == "nt"
+
+            logger.warning("Using shell={} for mvn command because of your OS.", use_shell)
+            logger.warning(
+                "IF MAVEN COMMAND FAILS, PLEASE TRY THE OTHER OPTION BY EDITING run.py manually"
+            )
+
+            subprocess.run(
+                [
+                    "mvn",
+                    "archetype:generate",
+                    # "-DgroupId=com.hypixel.hytale", "-DartifactId=hytale-server",
+                    "-DgroupId=com.hypixel.hytale",
+                    "-DartifactId=" + Constants.PROJECT_DIR.name,
+                    "-DarchetypeArtifactId=maven-archetype-quickstart",
+                    "-DinteractiveMode=false",
+                ],
+                check=True,
+                shell=use_shell,
+            )
 
             logger.info("Maven project initialized!")
 
@@ -248,8 +286,8 @@ if __name__ == "__main__":
             template_file = Constants.BASE_DIR / "pom.xml.template"
 
             if template_file.exists():
-                ET.register_namespace('', "http://maven.apache.org/POM/4.0.0")
-                ns = {'mvn': 'http://maven.apache.org/POM/4.0.0'}
+                ET.register_namespace("", "http://maven.apache.org/POM/4.0.0")
+                ns = {"mvn": "http://maven.apache.org/POM/4.0.0"}
 
                 target_tree = ET.parse(pom_file)
                 target_root = target_tree.getroot()
@@ -258,23 +296,25 @@ if __name__ == "__main__":
                 template_root = template_tree.getroot()
 
                 # Update dependencies
-                tmpl_deps = template_root.find('mvn:dependencies', ns)
+                tmpl_deps = template_root.find("mvn:dependencies", ns)
                 if tmpl_deps is not None:
-                    target_deps = target_root.find('mvn:dependencies', ns)
+                    target_deps = target_root.find("mvn:dependencies", ns)
                     if target_deps is not None:
                         target_root.remove(target_deps)
                     target_root.append(tmpl_deps)
 
                 # Update build
-                tmpl_build = template_root.find('mvn:build', ns)
+                tmpl_build = template_root.find("mvn:build", ns)
                 if tmpl_build is not None:
-                    target_build = target_root.find('mvn:build', ns)
+                    target_build = target_root.find("mvn:build", ns)
                     if target_build is not None:
                         target_root.remove(target_build)
                     target_root.append(tmpl_build)
 
-                target_tree.write(pom_file, encoding='UTF-8', xml_declaration=True)
-                logger.info("Updated pom.xml with dependencies and build configuration from template")
+                target_tree.write(pom_file, encoding="UTF-8", xml_declaration=True)
+                logger.info(
+                    "Updated pom.xml with dependencies and build configuration from template"
+                )
             else:
                 logger.warning("pom.xml.template not found, skipping pom update")
 
@@ -307,12 +347,16 @@ if __name__ == "__main__":
         # logger.info("Applying patches")
         # apply_feature_patches(repo)
 
-        logger.info('')
-        logger.info('Setup finished!')
-        logger.info('You can now open the "{}" folder in IntelliJ IDEA and follow further instructions in the README', Constants.PROJECT_DIR)
-        logger.info('Please give us a star on GitHub if you find this project useful.')
-        logger.info('Happy Modding!')
-        logger.info('')
+        logger.info("")
+        logger.info("Setup finished!")
+        logger.info(
+            'You can now open the "{}" folder in IntelliJ IDEA and follow further '
+            "instructions in the README",
+            Constants.PROJECT_DIR,
+        )
+        logger.info("Please give us a star on GitHub if you find this project useful.")
+        logger.info("Happy Modding!")
+        logger.info("")
 
     elif action == "makeFeaturePatches":
         logger.warning("This is deprecated, please consider using makeSourcePatches instead.")
@@ -323,7 +367,8 @@ if __name__ == "__main__":
         # git format-patch --no-stat --minimal -N -o ../patches [range]
         # range can be abc1234..HEAD or similar
 
-        # for some reason this does not work, like python subprocess changes how baseline..HEAD is passed as argument?
+        # for some reason this does not work,
+        # like python subprocess changes how baseline..HEAD is passed as argument?
         # out = repo.execute(
         #     "format-patch --no-stat --minimal -N",
         #     "-o", tmp.name,
@@ -331,7 +376,11 @@ if __name__ == "__main__":
         # )
         out = subprocess.run(
             f'git format-patch --no-stat --minimal -N -o "{tmp.name}" baseline..HEAD',
-            cwd=str(Constants.PROJECT_DIR), shell=True, capture_output=True, text=True, check=True
+            cwd=str(Constants.PROJECT_DIR),
+            shell=True,
+            capture_output=True,
+            text=True,
+            check=True,
         )
 
         logger.info("git format-patch output:\n{}", out.stdout.strip())
@@ -343,7 +392,7 @@ if __name__ == "__main__":
                 continue  # skip existing patches
             shutil.move(
                 os.path.join(tmp.name, new_patch_file),
-                Constants.PATCHES_DIR / new_patch_file
+                Constants.PATCHES_DIR / new_patch_file,
             )
             copies += 1
 

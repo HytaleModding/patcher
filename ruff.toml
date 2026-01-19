@@ -1,0 +1,88 @@
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+# Same as Black.
+line-length = 100
+indent-width = 4
+
+[lint]
+# Enable Linting Rules
+select = [
+    "E",   # pycodestyle Rules. See https://docs.astral.sh/ruff/rules/#perflint-perf
+    "F",   # Pyflakes Rules. See https://docs.astral.sh/ruff/rules/#pyflakes-f
+    "PL",  # Pylint Rules. See https://docs.astral.sh/ruff/rules/#pylint-pl
+    "PD",  # Pandas-Vet Rules. See https://docs.astral.sh/ruff/rules/#pandas-vet-pd
+    "NPY", # Numpy Rules. See https://docs.astral.sh/ruff/rules/#numpy-specific-rules-npy
+]
+# Ignore specific rules
+ignore = [
+    "PLR0911", # Pylint: Too many return statements
+    "PLR0915", # Pylint: Too many statements in function
+    "PLR0913", # Pylint: Too many arguments
+    "PLR0912", # Pylint: Too many branches
+    "PLR2004", # Pylint: Consider using `isinstance` instead of `type`
+]
+
+# Exclude Jupyter notebooks from linting.
+exclude = ["*.ipynb"]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+# Enable auto-formatting of code examples in docstrings. Markdown,
+# reStructuredText code/literal blocks and doctests are all supported.
+#
+# This is currently disabled by default, but it is planned for this
+# to be opt-out in the future.
+docstring-code-format = false
+
+# Set the line length limit used when formatting code snippets in
+# docstrings.
+#
+# This only has an effect when the `docstring-code-format` setting is
+# enabled.
+docstring-code-line-length = "dynamic"
