@@ -100,7 +100,51 @@ def apply_source_patches():
             )
             logger.info("Applied patch {}, out={}", rel_path, out.stdout.strip())
         except subprocess.CalledProcessError as e:
-            logger.error("Failed to apply patch {}: {}", rel_path, e.stderr.decode().strip())
+            stderr = e.stderr
+            if isinstance(stderr, bytes):
+                stderr = stderr.decode(errors="replace")
+            logger.error("Failed to apply patch {}: {}", rel_path, (stderr or "").strip())
+
+
+def ensure_git_identity(repo_dir: Path):
+    def get_config(key: str) -> str:
+        result = subprocess.run(
+            ["git", "config", "--get", key],
+            cwd=str(repo_dir),
+            capture_output=True,
+            text=True
+        )
+        return (result.stdout or "").strip()
+
+    def set_config(key: str, value: str):
+        subprocess.run(
+            ["git", "config", key, value],
+            cwd=str(repo_dir),
+            check=True
+        )
+
+    name = get_config("user.name")
+    email = get_config("user.email")
+
+    if not name:
+        name = (
+            os.getenv("GIT_AUTHOR_NAME")
+            or os.getenv("GIT_COMMITTER_NAME")
+            or os.getenv("USERNAME")
+            or "Hytale Patcher"
+        )
+        set_config("user.name", name)
+        logger.info("Set git user.name to {}", name)
+
+    if not email:
+        email = (
+            os.getenv("GIT_AUTHOR_EMAIL")
+            or os.getenv("GIT_COMMITTER_EMAIL")
+            or (f"{name.replace(' ', '').lower()}@local" if name else "")
+            or "patcher@local"
+        )
+        set_config("user.email", email)
+        logger.info("Set git user.email to {}", email)
 
 
 def make_source_patches():
@@ -294,7 +338,8 @@ if __name__ == "__main__":
 
         repo = Repository(str(Constants.PROJECT_DIR))
         repo.execute("init")
-        repo.add_files([".gitignore"])
+        ensure_git_identity(Constants.PROJECT_DIR)
+        repo.add_files(['.gitignore'])
         repo.add_files(all_files=True)
         repo.commit("Initial decompilation")
         repo.execute("tag baseline")
