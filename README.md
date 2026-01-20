@@ -12,3 +12,6 @@ When you add a compiled jar as a library, IntelliJ only decompiles class by clas
 
 If anything goes wrong, please ping the author in [this post](https://discord.com/channels/1440173445039132724/1460707397189238785) ("How to browse the server source code") in the Hytale Modding discord server
 
+# Contributions
+
+Suggestions and PRs welcome. Minimal changes only, please. If something is large, open an issue first. Do not remove unused code (about generating and applying patches)
