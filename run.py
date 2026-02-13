@@ -342,7 +342,6 @@ if __name__ == "__main__":
         repo.add_files(['.gitignore'])
         repo.add_files(all_files=True)
         repo.commit("Initial decompilation")
-        repo.execute("tag baseline")
 
         # logger.info("Applying patches")
         # apply_feature_patches(repo)
