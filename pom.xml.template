@@ -264,6 +264,17 @@
       <artifactId>zstd-jni</artifactId>
       <version>1.5.7-4</version>
     </dependency>
+    <dependency>
+        <groupId>com.google.crypto.tink</groupId>
+        <artifactId>tink</artifactId>
+        <version>1.20.0</version>
+        <scope>compile</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.rocksdb</groupId>
+        <artifactId>rocksdbjni</artifactId>
+        <version>10.4.2</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
